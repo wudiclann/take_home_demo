@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+sqlalchemy
+pymupdf
+openai
+chromadb
+rank-bm25
+sentence-transformers
+python-multipart
+pytest
