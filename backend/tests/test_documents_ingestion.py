@@ -1,30 +1,14 @@
 import time
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
 FIXTURE_PDF = Path(__file__).parent / "fixtures" / "attention_is_all_you_need.pdf"
 POLL_ATTEMPTS = 30
 POLL_INTERVAL_S = 0.5
 
-
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    # Isolate this test from the real dev database -- session.py reads APP_DB_PATH
-    # at import time, so the env var must be set before app modules are imported.
-    monkeypatch.setenv("APP_DB_PATH", str(tmp_path / "test.db"))
-
-    from fastapi.testclient import TestClient
-
-    from app.db.session import init_db
-    from app.main import app
-
-    init_db()
-    return TestClient(app)
+# `client` (and the storage isolation it depends on) comes from conftest.py.
 
 
-def _poll_until_terminal(client: "TestClient", document_id: str) -> dict:
+def _poll_until_terminal(client, document_id: str) -> dict:
     status_body = {}
     for _ in range(POLL_ATTEMPTS):
         response = client.get(f"/documents/{document_id}")
@@ -82,3 +66,9 @@ def test_upload_and_ingest_multi_chapter_pdf(client):
         assert chunk.chapter_id in chapter_ids
         assert 1 <= chunk.start_page <= chunk.end_page <= status_body["total_pages"]
         assert chunk.text.strip()
+
+    # Every chunk should have a matching embedding in Chroma, keyed by the same id.
+    from app.core.vector_store import collection
+
+    stored = collection.get(where={"document_id": document_id})
+    assert set(stored["ids"]) == {c.id for c in chunks}

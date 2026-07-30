@@ -79,6 +79,9 @@ class Conversation(Base):
     answer_tone: Mapped[str] = mapped_column(String, default="conversational")
     current_page: Mapped[int | None] = mapped_column(Integer)
     summary: Mapped[str | None] = mapped_column(Text)
+    # Count of the earliest messages (by created_at) already folded into `summary`,
+    # so the background summary update only summarizes newly-fallen-out turns.
+    summarized_message_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 

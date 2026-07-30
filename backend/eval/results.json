@@ -1,0 +1,413 @@
+{
+  "document_id": "9c8e1d7c-4950-4883-a3a0-e5bec353970d",
+  "vector_only_hit_rate": 0.9285714285714286,
+  "hybrid_hit_rate": 0.9285714285714286,
+  "cases": [
+    {
+      "id": "q1",
+      "question": "What is the main architecture proposed in this paper?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages describe the Transformer architecture, emphasizing its reliance on attention mechanisms and the absence of recurrence or convolutions."
+        },
+        "top_ids": [
+          "5c8a477e-0b28-4097-b191-145c7c04c387",
+          "f62ff1b2-a32d-4e83-99a5-8f2005257d0d",
+          "f3fd367b-915b-4f92-a1e4-75973e7eb0d2",
+          "8b244277-17f6-4d8d-808e-0feff68ad974",
+          "246a8643-bddf-425a-8b2d-8174b9c269b7"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages clearly describe the Transformer architecture as being based entirely on attention mechanisms, without recurrence or convolutions."
+        },
+        "top_chunk_ids": [
+          "998c59a1-45f8-4bce-84c9-146223869631",
+          "9606a1cc-ede3-429c-8fb9-4772cb1c32e4",
+          "246a8643-bddf-425a-8b2d-8174b9c269b7"
+        ],
+        "top_rerank_score": -6.233746528625488
+      }
+    },
+    {
+      "id": "q2",
+      "question": "What tasks were used to evaluate the model?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages mention the evaluation of the model on the English-to-German and English-to-French translation tasks using the WMT 2014 dataset."
+        },
+        "top_ids": [
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "979921fe-fce5-42ed-9a69-543c7f9ce18f",
+          "a4a45a60-f49d-4ff2-95e9-12e6ed62b855",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812",
+          "35739741-2687-4ecb-8383-f0f4012b291f"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explicitly mention the WMT 2014 English-to-German and English-to-French translation tasks as part of the evaluation of the model."
+        },
+        "top_chunk_ids": [
+          "e8c696f0-82f8-4bc3-8111-4b275bfeb9ae",
+          "a4a45a60-f49d-4ff2-95e9-12e6ed62b855",
+          "97a16204-44fb-42da-beb6-299ee9c994f7"
+        ],
+        "top_rerank_score": 0.914668083190918
+      }
+    },
+    {
+      "id": "q3",
+      "question": "What BLEU score did the model achieve on the English-to-German translation task?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages contain the information that the model achieved a BLEU score of 28.4 on the WMT 2014 English-to-German translation task."
+        },
+        "top_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "979921fe-fce5-42ed-9a69-543c7f9ce18f",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide the specific BLEU score of 28.4 for the WMT 2014 English-to-German translation task."
+        },
+        "top_chunk_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "9606a1cc-ede3-429c-8fb9-4772cb1c32e4",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a"
+        ],
+        "top_rerank_score": 9.436988830566406
+      }
+    },
+    {
+      "id": "q4",
+      "question": "What BLEU score did it get on English-to-French?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages contain the information that the big model achieved a BLEU score of 41.8 on the English-to-French translation task."
+        },
+        "top_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812",
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "0c015821-076b-4ebc-a857-185e5876ae71"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages contain the information that the big model achieved a BLEU score of 41.8 on the English-to-French translation task."
+        },
+        "top_chunk_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "ca1cad02-14ee-4aec-ac12-115332c75e44"
+        ],
+        "top_rerank_score": 6.000004768371582
+      }
+    },
+    {
+      "id": "q5",
+      "question": "What is self-attention?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "Passage [1] provides a clear definition of self-attention, mentioning its relation to different positions of a single sequence and its purpose in computing a representation of that sequence."
+        },
+        "top_ids": [
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "24294942-c4d8-456c-98fd-f0ff51aa9310",
+          "cf5786a2-03f3-4c43-969f-eb75b02a769e",
+          "cf129edf-55c5-451e-9375-a6f0a52535e3",
+          "f62ff1b2-a32d-4e83-99a5-8f2005257d0d"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The first passage explicitly defines self-attention as an attention mechanism relating different positions of a single sequence to compute a representation of that sequence."
+        },
+        "top_chunk_ids": [
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "7a7c7889-4a63-448f-a3a5-a92f63b07d51",
+          "24294942-c4d8-456c-98fd-f0ff51aa9310"
+        ],
+        "top_rerank_score": 8.18954849243164
+      }
+    },
+    {
+      "id": "q6",
+      "question": "How many layers does the encoder have in the base model?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explicitly state that the encoder is composed of a stack of N = 6 identical layers."
+        },
+        "top_ids": [
+          "246a8643-bddf-425a-8b2d-8174b9c269b7",
+          "5c8a477e-0b28-4097-b191-145c7c04c387",
+          "373adefb-b3f5-4384-9fb1-389ffd02814c",
+          "86f1deb7-22b7-42a5-a83e-5795321c8401",
+          "8ae40f1c-c58f-430e-a153-ba2dfd88b6e8"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explicitly state that the encoder is composed of a stack of N = 6 identical layers."
+        },
+        "top_chunk_ids": [
+          "246a8643-bddf-425a-8b2d-8174b9c269b7",
+          "86f1deb7-22b7-42a5-a83e-5795321c8401",
+          "5c8a477e-0b28-4097-b191-145c7c04c387"
+        ],
+        "top_rerank_score": 5.290313243865967
+      }
+    },
+    {
+      "id": "q7",
+      "question": "What is multi-head attention, and why does the model use it instead of a single attention function?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explain multi-head attention, its parallel processing of different learned projections, and how it allows the model to attend to information from different representation subspaces at different positions."
+        },
+        "top_ids": [
+          "1726a6a7-d8e6-4995-a28d-fd13e5e65151",
+          "26f254df-3b36-4780-9617-06ff36529240",
+          "cf5786a2-03f3-4c43-969f-eb75b02a769e",
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "5239ec2e-dfb7-4ac0-8416-6372a8b7b7cc"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explain multi-head attention, its parallel processing of different learned projections, and how it allows the model to attend to different representation subspaces at different positions."
+        },
+        "top_chunk_ids": [
+          "26f254df-3b36-4780-9617-06ff36529240",
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "cf5786a2-03f3-4c43-969f-eb75b02a769e"
+        ],
+        "top_rerank_score": 5.5697126388549805
+      }
+    },
+    {
+      "id": "q8",
+      "question": "Since the Transformer has no recurrence, how does it account for the order of words in a sequence?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "MISS",
+          "reasoning": "The retrieved passages do not mention positional encodings or the use of sine and cosine functions to account for the order of words in a sequence."
+        },
+        "top_ids": [
+          "998c59a1-45f8-4bce-84c9-146223869631",
+          "5c8a477e-0b28-4097-b191-145c7c04c387",
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "45c773a6-896b-4eb1-9058-8ad056b391b4",
+          "246a8643-bddf-425a-8b2d-8174b9c269b7"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "MISS",
+          "reasoning": "The retrieved passages do not mention positional encodings or the use of sine and cosine functions to account for the order of words in a sequence."
+        },
+        "top_chunk_ids": [
+          "998c59a1-45f8-4bce-84c9-146223869631",
+          "156c4d3d-5fb6-4daa-a8e4-dffbd53c26f7",
+          "e8c696f0-82f8-4bc3-8111-4b275bfeb9ae"
+        ],
+        "top_rerank_score": -2.604966163635254
+      }
+    },
+    {
+      "id": "q9",
+      "question": "What optimizer was used to train the model?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide detailed information about the Adam optimizer used for training, including the learning rate schedule with warmup."
+        },
+        "top_ids": [
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "35739741-2687-4ecb-8383-f0f4012b291f",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "979921fe-fce5-42ed-9a69-543c7f9ce18f"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide detailed information about the Adam optimizer used for training, including the learning rate schedule with warmup."
+        },
+        "top_chunk_ids": [
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "35739741-2687-4ecb-8383-f0f4012b291f",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812"
+        ],
+        "top_rerank_score": 4.235602378845215
+      }
+    },
+    {
+      "id": "q10",
+      "question": "How long did it take to train the base model, and on what hardware?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide the information that the base model was trained for a total of 12 hours on 8 NVIDIA P100 GPUs."
+        },
+        "top_ids": [
+          "35739741-2687-4ecb-8383-f0f4012b291f",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812",
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "979921fe-fce5-42ed-9a69-543c7f9ce18f",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide the information that the base model was trained for a total of 12 hours on 8 NVIDIA P100 GPUs."
+        },
+        "top_chunk_ids": [
+          "35739741-2687-4ecb-8383-f0f4012b291f",
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "ca1cad02-14ee-4aec-ac12-115332c75e44"
+        ],
+        "top_rerank_score": 2.256148099899292
+      }
+    },
+    {
+      "id": "q11",
+      "question": "What regularization techniques did they use during training?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages mention both 'Residual Dropout' and 'Label Smoothing' as regularization techniques used during training."
+        },
+        "top_ids": [
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "99389238-21c6-43f8-b3c4-a45f1f581ef9",
+          "35739741-2687-4ecb-8383-f0f4012b291f",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The first passage mentions 'Residual Dropout' as a regularization technique used during training."
+        },
+        "top_chunk_ids": [
+          "ca1cad02-14ee-4aec-ac12-115332c75e44",
+          "45c773a6-896b-4eb1-9058-8ad056b391b4",
+          "35739741-2687-4ecb-8383-f0f4012b291f"
+        ],
+        "top_rerank_score": 3.7772483825683594
+      }
+    },
+    {
+      "id": "q12_followup",
+      "question": "How does that compare to the previous best results?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The retrieved passages provide specific details about improvements in BLEU scores for both English-to-German and English-to-French translations, indicating a new state-of-the-art performance."
+        },
+        "top_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "0c015821-076b-4ebc-a857-185e5876ae71",
+          "979921fe-fce5-42ed-9a69-543c7f9ce18f",
+          "a937d5b8-94c3-4431-b28f-d1e9fb76078a",
+          "622c0edd-e0e0-4bea-b79b-0ac7e546ef25"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages provide information that the big transformer model improves over previous best results by more than 2 BLEU on English-to-German and sets a new state-of-the-art on English-to-French."
+        },
+        "top_chunk_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "622c0edd-e0e0-4bea-b79b-0ac7e546ef25",
+          "48aa2b37-3608-4ba4-ae07-a7c2d0479812"
+        ],
+        "top_rerank_score": -2.817347764968872
+      }
+    },
+    {
+      "id": "q13_negative_check",
+      "question": "Does this model use any convolutional or recurrent layers?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explicitly state that the model contains no recurrence and no convolution, relying entirely on attention mechanisms."
+        },
+        "top_ids": [
+          "373adefb-b3f5-4384-9fb1-389ffd02814c",
+          "246a8643-bddf-425a-8b2d-8174b9c269b7",
+          "86f1deb7-22b7-42a5-a83e-5795321c8401",
+          "45c773a6-896b-4eb1-9058-8ad056b391b4",
+          "5c8a477e-0b28-4097-b191-145c7c04c387"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The passages explicitly state that the model is based entirely on attention mechanisms and replaces recurrent layers, confirming that it does not use convolutional or recurrent layers."
+        },
+        "top_chunk_ids": [
+          "f401bccd-4799-49fc-a625-4be6dc91c935",
+          "e8c696f0-82f8-4bc3-8111-4b275bfeb9ae",
+          "7a7c7889-4a63-448f-a3a5-a92f63b07d51"
+        ],
+        "top_rerank_score": 5.64838171005249
+      }
+    },
+    {
+      "id": "q14_out_of_scope",
+      "question": "Does the paper report any results on ImageNet image classification?",
+      "vector_only": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The retrieved passages do not mention ImageNet image classification, indicating that the question is not covered in the paper."
+        },
+        "top_ids": [
+          "689299ed-de07-4747-a1f6-ea8826638688",
+          "6fe430af-b5c4-4973-9562-844c9ce9ed87",
+          "033938a2-f9cc-4746-a759-c74abd340f38",
+          "97a16204-44fb-42da-beb6-299ee9c994f7",
+          "a4a45a60-f49d-4ff2-95e9-12e6ed62b855"
+        ]
+      },
+      "hybrid": {
+        "verdict": {
+          "verdict": "HIT",
+          "reasoning": "The retrieved passages do not mention ImageNet image classification, indicating that the question is out of scope for the source document."
+        },
+        "top_chunk_ids": [
+          "788dfa31-6f4d-4cbd-991c-c87b5b2b4973",
+          "622c0edd-e0e0-4bea-b79b-0ac7e546ef25",
+          "689299ed-de07-4747-a1f6-ea8826638688"
+        ],
+        "top_rerank_score": -10.750391006469727
+      }
+    }
+  ]
+}

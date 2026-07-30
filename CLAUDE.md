@@ -127,7 +127,7 @@ keep them in mind for every decision, not just the initial architecture:
 | Keyword search | BM25 |
 | Hybrid merge | Reciprocal Rank Fusion (RRF) — requires BM25 and Chroma to key results by the **same chunk id** |
 | Reranker | Cross-encoder via sentence-transformers, `ms-marco-MiniLM-L-6-v2` |
-| LLM | OpenAI Chat Completions API (plain `openai` SDK) |
+| LLM | OpenAI Chat Completions API (plain `openai` SDK), `gpt-4o-mini` for condensation/answer-gen/summary |
 | ASR | OpenAI Whisper API, `whisper-1` |
 | TTS | OpenAI TTS API, `gpt-4o-mini-tts` |
 | Audio capture | Browser `MediaRecorder` API |
@@ -146,6 +146,18 @@ keep them in mind for every decision, not just the initial architecture:
 
 ## Query flow
 
+**Implementation status**: `POST /conversations` creates a conversation for a document.
+`POST /chat` (`{conversation_id, question}` → answer + citations) is the **text-only** path — plain
+text in/out, messages saved without `audio_path`. `POST /ask` (`conversation_id` + audio file,
+multipart) is the **voice** path covering steps 1-8 end-to-end: audio in → `POST /transcribe`'s
+Whisper call → steps 3-8 (memory, condensation, hybrid retrieval, rerank, refusal gate, answer
+generation) → `core/tts.synthesize_speech()` → saved `.mp3` → `{question, answer, is_refusal,
+sources, audio_path}`, with the assistant message's `audio_path` persisted. `POST /transcribe`
+(audio in, text out) also still exists standalone, used internally by `/ask` and directly testable
+on its own. Step 11's background summary-update is wired for both `/chat` and `/ask`. **Not yet
+implemented**: step 9's sentence-level streaming — `/ask` currently generates the full answer, then
+synthesizes the full audio, then returns both together; no progressive/streamed playback yet.
+
 1. Browser records audio (MediaRecorder) → uploads to FastAPI.
 2. FastAPI calls Whisper API → transcribed text.
 3. Backend pulls conversation memory for this `conversation_id` (see Memory below).
@@ -158,7 +170,9 @@ keep them in mind for every decision, not just the initial architecture:
 6. **Rerank** merged top-k with the cross-encoder → top 3–5 chunks.
 7. **Refusal gate**: if the top rerank score is below a set threshold, skip generation and return
    a canned clarifying/refusal response (hard deterministic threshold, not left to LLM judgment —
-   chosen for a reliable, testable refusal case).
+   chosen for a reliable, testable refusal case). Threshold is currently `-8.0`, a provisional value
+   from one small eval run (an out-of-scope question scored -10.75 vs. -6.23..9.44 for genuinely
+   answerable ones) — revisit as more real queries are observed.
 8. Otherwise: original question + retrieved chunks + conversation memory + `answer_tone` → LLM
    (Chat Completions, streamed) → grounded answer.
 9. **Streaming**: LLM tokens are split into sentences as they stream; each completed sentence is
@@ -176,11 +190,14 @@ keep them in mind for every decision, not just the initial architecture:
 Two layers only — a semantic/vector memory tier was considered and deliberately dropped as
 unnecessary complexity at single-document, single-session scale:
 
-- **Short-term**: last N raw turns from `messages`, included directly in the prompt. Handles
-  pronoun resolution and immediate follow-ups.
-- **Long-term**: a rolling summary in `conversations.summary`. When turns fall out of the N-turn
-  window, they're compressed into the running summary (one LLM call, run as a background task so
-  it never blocks the user-facing response).
+- **Short-term**: last N raw *messages* from `messages` (N=8, i.e. ~4 Q&A pairs), included directly
+  in the prompt. Handles pronoun resolution and immediate follow-ups.
+- **Long-term**: a rolling summary in `conversations.summary`. When messages fall out of the
+  N-message window, they're folded into the running summary (one LLM call, run as a background
+  task so it never blocks the user-facing response). `conversations.summarized_message_count`
+  tracks how many of the earliest messages have already been folded in, so each update only
+  summarizes the newly-fallen-out messages instead of re-summarizing the whole history every turn.
+  Message rows themselves are never deleted — the full transcript still needs to render in the UI.
 
 Both layers feed **two** places: query condensation (step 4 above) and answer generation (step 8).
 
@@ -228,6 +245,7 @@ CREATE TABLE conversations (
     answer_tone   TEXT DEFAULT 'conversational',  -- 'concise' | 'conversational' | 'scholarly'
     current_page  INTEGER,               -- drives the reading-position header ONLY (display, not retrieval gating)
     summary       TEXT,                  -- rolling long-term memory summary
+    summarized_message_count INTEGER DEFAULT 0,  -- how many earliest messages are already folded into summary
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -265,6 +283,71 @@ Design notes:
   never a cross-book search.
 - `message_sources` is its own table (not columns on `messages`) so an answer can cite multiple
   non-contiguous page ranges without a schema change later.
+
+Folder structure
+project-root/
+├── backend/
+│   ├── app/
+│   │   ├── main.py                  # FastAPI app entrypoint, mounts routes + static frontend
+│   │   ├── config.py                # pydantic-settings, reads .env
+│   │   ├── api/
+│   │   │   └── routes/
+│   │   │       ├── documents.py     # upload PDF, list documents/chapters
+│   │   │       └── chat.py          # POST audio -> ASR -> RAG -> TTS -> audio response
+│   │   ├── core/
+│   │   │   ├── pdf_parser.py        # PyMuPDF extraction
+│   │   │   ├── chunker.py           # structure-aware chunking
+│   │   │   ├── embeddings.py        # OpenAI embeddings client
+│   │   │   ├── vector_store.py      # ChromaDB client wrapper
+│   │   │   ├── keyword_search.py    # BM25 index + search
+│   │   │   ├── retrieval.py         # RRF merge of BM25 + vector results
+│   │   │   ├── reranker.py          # cross-encoder reranking
+│   │   │   ├── rag.py               # orchestrates memory -> query condensation -> retrieval -> LLM call
+│   │   │   ├── memory.py            # short-term window + rolling summary helper
+│   │   │   ├── asr.py               # Whisper API client
+│   │   │   └── tts.py               # OpenAI TTS API client
+│   │   ├── db/
+│   │   │   ├── models.py            # SQLAlchemy models (Document, Chapter, Chunk, Conversation, Message, MessageSource)
+│   │   │   └── session.py           # SQLite engine/session setup
+│   │   └── schemas/
+│   │       ├── document.py          # Pydantic request/response models
+│   │       └── chat.py
+│   ├── static/                      # built React app copied here for deployment
+│   ├── data/
+│   │   ├── app.db                   # SQLite file
+│   │   └── chroma/                  # ChromaDB persistence directory
+│   ├── tests/
+│   │   ├── fixtures/                # sample PDFs used across tests (e.g. attention_is_all_you_need.pdf)
+│   │   ├── test_documents_ingestion.py
+│   │   ├── test_retrieval.py
+│   │   ├── test_chat.py
+│   │   └── ...                      # one test file per module/endpoint being covered
+│   ├── scripts/
+│   │   ├── qa_benchmark.json        # QA benchmark cases (phase 13 evaluation)
+│   │   └── run_qa_benchmark.py      # runner: hits /chat, checks keyword coverage, reports pass/fail
+│   ├── requirements.txt
+│   ├── .env                         # actual secrets, gitignored
+│   └── .env.example                 # committed template, no real values
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── PdfUpload.tsx
+│   │   │   ├── ChatArea.tsx
+│   │   │   ├── MicButton.tsx
+│   │   │   └── AudioPlayer.tsx
+│   │   ├── pages/
+│   │   │   └── Home.tsx
+│   │   ├── api/
+│   │   │   └── client.ts            # fetch wrappers for backend endpoints
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts               # dev-time proxy to FastAPI on :8000
+│
+├── .gitignore                       # backend/data/, backend/.env, node_modules/, venv/, __pycache__/
+└── README.md                        # setup, run instructions, design notes
 
 ## Frontend design reference
 

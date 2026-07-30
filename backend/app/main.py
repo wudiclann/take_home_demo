@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import documents
+from app.api.routes import chat, documents
 from app.db.session import init_db
 
 
@@ -17,3 +17,4 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Take Home Demo", lifespan=lifespan)
 
 app.include_router(documents.router)
+app.include_router(chat.router)

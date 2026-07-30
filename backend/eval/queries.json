@@ -1,0 +1,107 @@
+{
+  "document": "attention_is_all_you_need.pdf",
+  "cases": [
+    {
+      "id": "q1",
+      "question": "What is the main architecture proposed in this paper?",
+      "expected_keywords": ["Transformer", "attention", "recurrence", "convolution"],
+      "expected_answer_summary": "The Transformer — an architecture based entirely on attention mechanisms, with no recurrence or convolutions.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q2",
+      "question": "What tasks were used to evaluate the model?",
+      "expected_keywords": ["translation", "English-to-German", "English-to-French", "WMT"],
+      "expected_answer_summary": "Machine translation — WMT 2014 English-to-German and English-to-French translation tasks.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q3",
+      "question": "What BLEU score did the model achieve on the English-to-German translation task?",
+      "expected_keywords": ["28.4", "BLEU"],
+      "expected_answer_summary": "28.4 BLEU on WMT 2014 English-to-German.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q4",
+      "question": "What BLEU score did it get on English-to-French?",
+      "expected_keywords": ["41.8", "BLEU"],
+      "expected_answer_summary": "41.8 BLEU, a new single-model state-of-the-art result.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q5",
+      "question": "What is self-attention?",
+      "expected_keywords": ["self-attention", "positions", "sequence", "representation"],
+      "expected_answer_summary": "An attention mechanism relating different positions of a single sequence to compute a representation of that sequence.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q6",
+      "question": "How many layers does the encoder have in the base model?",
+      "expected_keywords": ["6", "layers", "encoder"],
+      "expected_answer_summary": "6 identical layers (N=6).",
+      "expect_refusal": false
+    },
+    {
+      "id": "q7",
+      "question": "What is multi-head attention, and why does the model use it instead of a single attention function?",
+      "expected_keywords": ["multi-head", "parallel", "representation subspaces", "different positions"],
+      "expected_answer_summary": "Multiple attention functions run in parallel with different learned projections, letting the model attend to information from different representation subspaces at different positions simultaneously.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q8",
+      "question": "Since the Transformer has no recurrence, how does it account for the order of words in a sequence?",
+      "expected_keywords": ["positional encoding", "sine", "cosine"],
+      "expected_answer_summary": "Positional encodings (sine and cosine functions of different frequencies) are added to the input embeddings.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q9",
+      "question": "What optimizer was used to train the model?",
+      "expected_keywords": ["Adam", "learning rate", "warmup"],
+      "expected_answer_summary": "The Adam optimizer, with a learning rate schedule involving warmup followed by decay.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q10",
+      "question": "How long did it take to train the base model, and on what hardware?",
+      "expected_keywords": ["12 hours", "P100", "GPUs"],
+      "expected_answer_summary": "About 12 hours on 8 NVIDIA P100 GPUs.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q11",
+      "question": "What regularization techniques did they use during training?",
+      "expected_keywords": ["dropout", "label smoothing"],
+      "expected_answer_summary": "Residual dropout and label smoothing.",
+      "expect_refusal": false
+    },
+    {
+      "id": "q12_followup",
+      "question": "How does that compare to the previous best results?",
+      "requires_prior_turn": "q3_or_q4",
+      "expected_keywords": ["improve", "state-of-the-art", "previous"],
+      "expected_answer_summary": "It improves over previous best results (including ensembles) by over 2 BLEU on English-to-German, and sets a new single-model state-of-the-art on English-to-French.",
+      "expect_refusal": false,
+      "note": "Multi-turn test: only answerable correctly if the memory/query-condensation layer resolves 'that' from the prior turn about BLEU scores."
+    },
+    {
+      "id": "q13_negative_check",
+      "question": "Does this model use any convolutional or recurrent layers?",
+      "expected_keywords": ["no", "not", "entirely", "attention"],
+      "expected_answer_summary": "No — the model relies entirely on attention mechanisms, explicitly avoiding recurrence and convolutions.",
+      "expect_refusal": false,
+      "note": "Tests that the model correctly answers a negatively-phrased factual question rather than getting confused."
+    },
+    {
+      "id": "q14_out_of_scope",
+      "question": "Does the paper report any results on ImageNet image classification?",
+      "expected_keywords": [],
+      "expected_answer_summary": "Not covered in this paper — should not hallucinate a fabricated result.",
+      "expect_refusal": true,
+      "note": "Deliberately out-of-scope question. This paper is about translation, not image classification. Tests the 'no answer found in book' fallback (Message.is_refusal) rather than a hallucinated answer."
+    }
+  ]
+}
