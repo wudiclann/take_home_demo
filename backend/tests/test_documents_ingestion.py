@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 FIXTURE_PDF = Path(__file__).parent / "fixtures" / "attention_is_all_you_need.pdf"
 POLL_ATTEMPTS = 30

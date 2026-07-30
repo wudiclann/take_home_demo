@@ -1,9 +1,19 @@
 # FastAPI app entrypoint, mounts routes + static frontend
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api.routes import documents
+from app.db.session import init_db
 
-app = FastAPI(title="Take Home Demo")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Take Home Demo", lifespan=lifespan)
 
 app.include_router(documents.router)
