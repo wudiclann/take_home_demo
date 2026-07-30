@@ -5,7 +5,6 @@ as test_asr.py, so no external audio fixture is needed.
 """
 
 import uuid
-from pathlib import Path
 
 
 def test_ask_full_voice_pipeline(client, sample_document_id):
@@ -34,9 +33,12 @@ def test_ask_full_voice_pipeline(client, sample_document_id):
     assert "28.4" in body["answer"]
     assert body["sources"]
 
-    answer_audio_path = Path(body["audio_path"])
-    assert answer_audio_path.exists()
-    content = answer_audio_path.read_bytes()
+    # audio_path is a servable URL (via the /audio static mount), not a filesystem path --
+    # fetch it through the same client to prove the mount actually works end-to-end.
+    assert body["audio_path"].startswith("/audio/")
+    audio_response = client.get(body["audio_path"])
+    assert audio_response.status_code == 200
+    content = audio_response.content
     assert len(content) > 1000
     assert content[:3] == b"ID3" or (content[0] == 0xFF and (content[1] & 0xE0) == 0xE0)
 

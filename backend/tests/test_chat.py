@@ -114,3 +114,53 @@ def test_chat_memory_rollover_folds_old_turns_into_summary(client, sample_docume
         assert conversation.summary
     finally:
         session.close()
+
+
+def test_list_messages_returns_persisted_turn(client, sample_document_id):
+    response = client.post("/conversations", json={"document_id": sample_document_id})
+    conversation_id = response.json()["id"]
+
+    client.post(
+        "/chat",
+        json={
+            "conversation_id": conversation_id,
+            "question": "How many layers does the encoder have in the base model?",
+        },
+    )
+
+    response = client.get(f"/conversations/{conversation_id}/messages")
+    assert response.status_code == 200
+    messages = response.json()
+    assert len(messages) == 2
+    assert messages[0]["role"] == "user"
+    assert messages[1]["role"] == "assistant"
+    assert messages[1]["sources"]
+
+
+def test_update_conversation_persists_current_page_and_tone(client, sample_document_id):
+    response = client.post("/conversations", json={"document_id": sample_document_id})
+    conversation_id = response.json()["id"]
+
+    response = client.patch(
+        f"/conversations/{conversation_id}",
+        json={"current_page": 5, "answer_tone": "scholarly"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current_page"] == 5
+    assert body["answer_tone"] == "scholarly"
+
+
+def test_delete_conversation_removes_it_and_its_messages(client, sample_document_id):
+    response = client.post("/conversations", json={"document_id": sample_document_id})
+    conversation_id = response.json()["id"]
+    client.post(
+        "/chat",
+        json={"conversation_id": conversation_id, "question": "What optimizer was used?"},
+    )
+
+    response = client.delete(f"/conversations/{conversation_id}")
+    assert response.status_code == 204
+
+    response = client.get(f"/conversations/{conversation_id}/messages")
+    assert response.status_code == 404

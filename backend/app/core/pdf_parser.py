@@ -32,6 +32,7 @@ class ParsedChapter:
 class ParsedDocument:
     total_pages: int
     chapters: list[ParsedChapter]
+    author: str | None = None
 
 
 def _normalize(text: str) -> str:
@@ -171,6 +172,7 @@ def parse_pdf(file_path: str) -> ParsedDocument:
             headings = _headings_from_font_size(doc, paragraphs)
 
         chapters = _build_chapters(paragraphs, headings, total_pages)
-        return ParsedDocument(total_pages=total_pages, chapters=chapters)
+        author = doc.metadata.get("author") or None
+        return ParsedDocument(total_pages=total_pages, chapters=chapters, author=author)
     finally:
         doc.close()

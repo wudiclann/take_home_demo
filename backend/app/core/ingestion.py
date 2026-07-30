@@ -20,6 +20,7 @@ def process_document(document_id: str) -> None:
         try:
             parsed = parse_pdf(document.file_path)
             document.total_pages = parsed.total_pages
+            document.author = parsed.author
 
             chapter_rows: list[Chapter] = []
             chunk_rows: list[Chunk] = []

@@ -1,5 +1,7 @@
 # Pydantic request/response models for chat/messages
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -13,6 +15,13 @@ class ConversationOut(BaseModel):
     document_id: str
     title: str | None
     answer_tone: str
+    current_page: int | None
+
+
+class ConversationUpdateRequest(BaseModel):
+    current_page: int | None = None
+    answer_tone: str | None = None
+    title: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -46,3 +55,15 @@ class AskResponse(BaseModel):
     top_rerank_score: float | None
     sources: list[SourceOut]
     audio_path: str
+
+
+class MessageOut(BaseModel):
+    id: str
+    role: str
+    text: str
+    audio_path: str | None
+    audio_duration_s: float | None
+    top_rerank_score: float | None
+    is_refusal: bool | None
+    created_at: datetime
+    sources: list[SourceOut]

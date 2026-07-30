@@ -16,6 +16,8 @@ from app.schemas.chat import (
     ChatResponse,
     ConversationCreateRequest,
     ConversationOut,
+    ConversationUpdateRequest,
+    MessageOut,
     SourceOut,
     TranscribeResponse,
 )
@@ -127,7 +129,90 @@ def create_conversation(payload: ConversationCreateRequest):
             document_id=conversation.document_id,
             title=conversation.title,
             answer_tone=conversation.answer_tone,
+            current_page=conversation.current_page,
         )
+    finally:
+        session.close()
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+def update_conversation(conversation_id: str, payload: ConversationUpdateRequest):
+    session = SessionLocal()
+    try:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if payload.current_page is not None:
+            conversation.current_page = payload.current_page
+        if payload.answer_tone is not None:
+            conversation.answer_tone = payload.answer_tone
+        if payload.title is not None:
+            conversation.title = payload.title
+        session.commit()
+        return ConversationOut(
+            id=conversation.id,
+            document_id=conversation.document_id,
+            title=conversation.title,
+            answer_tone=conversation.answer_tone,
+            current_page=conversation.current_page,
+        )
+    finally:
+        session.close()
+
+
+@router.delete("/conversations/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: str):
+    session = SessionLocal()
+    try:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        session.delete(conversation)  # cascades to messages/message_sources
+        session.commit()
+    finally:
+        session.close()
+
+
+@router.get("/conversations/{conversation_id}/messages", response_model=list[MessageOut])
+def list_messages(conversation_id: str):
+    session = SessionLocal()
+    try:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        messages = (
+            session.query(Message)
+            .filter_by(conversation_id=conversation_id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        results = []
+        for message in messages:
+            sources_out = []
+            for source in message.sources:
+                chapter = session.get(Chapter, source.chapter_id) if source.chapter_id else None
+                sources_out.append(
+                    SourceOut(
+                        chapter_title=chapter.title if chapter else None,
+                        start_page=source.start_page,
+                        end_page=source.end_page,
+                    )
+                )
+            results.append(
+                MessageOut(
+                    id=message.id,
+                    role=message.role,
+                    text=message.text,
+                    audio_path=message.audio_path,
+                    audio_duration_s=message.audio_duration_s,
+                    top_rerank_score=message.top_rerank_score,
+                    is_refusal=message.is_refusal,
+                    created_at=message.created_at,
+                    sources=sources_out,
+                )
+            )
+        return results
     finally:
         session.close()
 
@@ -172,14 +257,15 @@ async def ask(
     result = generate_answer(document_id, question, memory, answer_tone)
 
     assistant_message_id = str(uuid.uuid4())
-    audio_path = str(synthesize_speech(result.answer, assistant_message_id))
+    synthesize_speech(result.answer, assistant_message_id)
+    audio_url = f"/audio/{assistant_message_id}.mp3"  # servable via the static mount, not a filesystem path
 
     message_id, sources_out = _persist_turn(
         conversation_id,
         question,
         result,
         assistant_message_id=assistant_message_id,
-        audio_path=audio_path,
+        audio_path=audio_url,
     )
 
     background_tasks.add_task(update_summary_if_needed, conversation_id)
@@ -191,5 +277,5 @@ async def ask(
         is_refusal=result.is_refusal,
         top_rerank_score=result.top_rerank_score,
         sources=sources_out,
-        audio_path=audio_path,
+        audio_path=audio_url,
     )

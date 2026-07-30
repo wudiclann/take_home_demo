@@ -24,6 +24,7 @@ class Document(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(String, nullable=False)
+    author: Mapped[str | None] = mapped_column(String)  # from PDF metadata, when present
     total_pages: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String, nullable=False)  # 'processing' | 'ready' | 'failed'
     error_message: Mapped[str | None] = mapped_column(Text)
