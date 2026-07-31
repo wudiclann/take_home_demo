@@ -238,6 +238,16 @@ textarea {
   background: var(--color-accent-100);
   color: var(--color-accent-800);
 }
+.tag-clickable {
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.tag-clickable:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
 
 /* -- dialog -- */
 .dialog-backdrop {

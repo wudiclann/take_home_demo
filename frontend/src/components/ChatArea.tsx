@@ -495,11 +495,23 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
                     </div>
                     {sources.length > 0 && (
                       <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-                        {sources.map((s) => (
-                          <span key={sourceKey(s)} className="tag tag-outline">
-                            {citationLabel(s)}
-                          </span>
-                        ))}
+                        {sources.map((s) =>
+                          s.start_page != null ? (
+                            <button
+                              key={sourceKey(s)}
+                              type="button"
+                              className="tag tag-outline tag-clickable"
+                              style={{ border: "1px solid var(--color-accent)" }}
+                              onClick={() => goToPage(s.start_page!)}
+                            >
+                              {citationLabel(s)}
+                            </button>
+                          ) : (
+                            <span key={sourceKey(s)} className="tag tag-outline">
+                              {citationLabel(s)}
+                            </span>
+                          ),
+                        )}
                       </div>
                     )}
                     {msg.role === "assistant" && msg.audio_path && <AudioPlayer src={msg.audio_path} />}
