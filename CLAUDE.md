@@ -78,10 +78,6 @@ Source requirement doc: `Take Home 作业.docx` (Chinese). Translated core flow:
 Mic input → ASR → RAG (retrieve from the book + LLM generates answer) → TTS → audio playback
 ```
 
-Note: a differently-named PDF also found in Downloads (`Take Home Test - (Junior to Mid Level LLM
-Engineer).pdf`, a DOSM-dataset chatbot spec using Dify/n8n) is **unrelated** — confirmed with the
-user, not part of this project's scope.
-
 ### What the brief explicitly evaluates
 
 This is a graded take-home; the requirements doc calls out these as the actual grading axes —
@@ -284,7 +280,9 @@ Design notes:
 - `message_sources` is its own table (not columns on `messages`) so an answer can cite multiple
   non-contiguous page ranges without a schema change later.
 
-Folder structure
+## Folder structure
+
+```
 project-root/
 ├── backend/
 │   ├── app/
@@ -348,6 +346,7 @@ project-root/
 │
 ├── .gitignore                       # backend/data/, backend/.env, node_modules/, venv/, __pycache__/
 └── README.md                        # setup, run instructions, design notes
+```
 
 ## Frontend design reference
 

@@ -83,6 +83,7 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
         >
           <div
             style={{
+              position: "relative",
               width: 52,
               height: 52,
               borderRadius: "50%",
@@ -92,6 +93,7 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
               justifyContent: "center",
             }}
           >
+            {busy && <div className="spinner-ring" />}
             <UploadIcon />
           </div>
           <div>
@@ -117,8 +119,10 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
           <div style={{ fontSize: 11, opacity: 0.45 }}>{t.pdfHint}</div>
         </div>
 
-        {status === "processing" && (
-          <p style={{ fontSize: 13, color: "var(--color-accent-700)", margin: 0 }}>Parsing and indexing…</p>
+        {busy && (
+          <p className="shimmer-text" style={{ fontSize: 13, margin: 0 }}>
+            {status === "uploading" ? "Uploading…" : "Parsing and indexing…"}
+          </p>
         )}
         {error && <p style={{ fontSize: 13, color: "var(--color-accent-700)", margin: 0 }}>{error}</p>}
 
