@@ -31,13 +31,24 @@ export default function Home() {
   }
 
   useEffect(() => {
-    refreshDocuments();
+    listDocuments().then((docs) => {
+      setDocuments(docs);
+      const withConversation = docs.find((d) => d.conversation_id);
+      if (withConversation) {
+        openBook(withConversation.id);
+      }
+    });
   }, []);
 
   async function openBook(documentId: string) {
     const conversation = await getOrCreateConversation(documentId);
     setSelectedDocumentId(documentId);
     setSelectedConversation(conversation);
+    // Reflect the (possibly just-created) conversation locally so the sidebar shows
+    // it immediately, rather than waiting for the next refreshDocuments() call.
+    setDocuments((prev) =>
+      prev.map((d) => (d.id === documentId ? { ...d, conversation_id: conversation.id } : d)),
+    );
     setView("chat");
   }
 

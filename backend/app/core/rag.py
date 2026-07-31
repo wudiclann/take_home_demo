@@ -71,9 +71,44 @@ Standalone search query:"""
     return response.choices[0].message.content.strip()
 
 
+def is_conversational(question: str) -> bool:
+    """Cheap classifier: True if this is a greeting/small talk, not a real question about
+    the book's content. Runs before retrieval so chit-chat never triggers a search or gets
+    citations attached."""
+    client = OpenAI(api_key=get_settings().openai_api_key)
+    prompt = f"""Is the following message a greeting, casual remark, or small talk -- NOT a \
+real question about a book's content? Reply with ONLY "yes" or "no".
+
+Message: {question}"""
+    response = client.chat.completions.create(
+        model=CONDENSE_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+    )
+    return response.choices[0].message.content.strip().lower().startswith("yes")
+
+
 def generate_answer(
     document_id: str, question: str, memory: ConversationMemory, answer_tone: str
 ) -> AnswerResult:
+    if is_conversational(question):
+        # Skip retrieval entirely for small talk -- no search, no sources attached.
+        client = OpenAI(api_key=get_settings().openai_api_key)
+        response = client.chat.completions.create(
+            model=ANSWER_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a friendly voice assistant for a book. Respond "
+                    "naturally and briefly to this greeting or casual remark.",
+                },
+                {"role": "user", "content": question},
+            ],
+            temperature=0.3,
+        )
+        answer = response.choices[0].message.content.strip()
+        return AnswerResult(answer=answer, is_refusal=False, top_rerank_score=None, sources=[])
+
     search_query = condense_query(question, memory)
     retrieved = retrieve(document_id, search_query, hybrid_k=20, final_k=3)
 
@@ -85,9 +120,13 @@ def generate_answer(
 
     passages = "\n\n".join(f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(retrieved))
     system_prompt = (
-        "You are a helpful assistant answering questions about a specific book, grounded ONLY "
-        "in the provided passages. If the passages don't actually contain the answer, say so "
-        "plainly instead of guessing or using outside knowledge.\n\n"
+        "You are a helpful voice assistant for a specific book. If the user sends a greeting, "
+        "casual remark, or anything that isn't actually a question about the book, respond "
+        "naturally and briefly, like a normal conversational reply -- do not force the book "
+        "passages into your answer or treat it as a book question.\n\n"
+        "For genuine questions about the book, answer grounded ONLY in the provided passages. "
+        "If the passages don't actually contain the answer, say so plainly instead of guessing "
+        "or using outside knowledge.\n\n"
         + TONE_SYSTEM_PROMPTS.get(answer_tone, TONE_SYSTEM_PROMPTS["conversational"])
     )
     memory_context = format_memory_for_prompt(memory)

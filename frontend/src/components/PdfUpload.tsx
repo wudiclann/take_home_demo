@@ -98,7 +98,13 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
             <div style={{ fontSize: 15 }}>{file ? file.name : t.dropHere}</div>
             <div style={{ fontSize: 12, opacity: 0.55, marginTop: 2 }}>{t.orBrowse}</div>
           </div>
-          <button type="button" className="btn btn-secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ fontFamily: "var(--font-body)", fontWeight: 400 }}
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+          >
             {t.chooseFile}
           </button>
           <input
@@ -117,10 +123,22 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
         {error && <p style={{ fontSize: 13, color: "var(--color-accent-700)", margin: 0 }}>{error}</p>}
 
         <div className="dialog-actions" style={{ borderTop: "1px solid var(--color-divider)", paddingTop: "var(--space-4)", marginTop: 0 }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontFamily: "var(--font-body)", fontWeight: 400 }}
+            onClick={onClose}
+            disabled={busy}
+          >
             {t.cancelBtn}
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleUpload} disabled={!file || busy}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ fontFamily: "var(--font-body)", fontWeight: 400 }}
+            onClick={handleUpload}
+            disabled={!file || busy}
+          >
             {t.uploadBtn}
           </button>
         </div>

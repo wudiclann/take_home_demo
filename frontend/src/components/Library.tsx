@@ -21,6 +21,7 @@ function coverTint(title: string): string {
 
 export default function Library({ t, documents, onOpenBook, onUploadClick }: LibraryProps) {
   const [query, setQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -50,14 +51,35 @@ export default function Library({ t, documents, onOpenBook, onUploadClick }: Lib
           <p style={{ opacity: 0.65, margin: "var(--space-2) 0 0", maxWidth: "52ch" }}>{t.librarySubtitle}</p>
         </div>
         <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
-          <input
-            className="input"
-            placeholder={t.searchPlaceholder}
-            style={{ width: 240 }}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button type="button" className="btn btn-secondary" onClick={onUploadClick}>
+          <div style={{ position: "relative" }}>
+            <svg
+              style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: isSearchFocused ? "var(--color-neutral-600)" : "var(--color-neutral-500)", transition: "color 0.2s ease" }}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              className="input"
+              placeholder={t.searchPlaceholder}
+              style={{
+                width: isSearchFocused ? 300 : 240,
+                paddingLeft: 32,
+                borderColor: isSearchFocused ? "var(--color-neutral-600)" : "var(--color-divider)",
+                transition: "border-color 0.2s ease, width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+            />
+          </div>
+          <button type="button" className="btn btn-secondary" style={{ fontFamily: "var(--font-body)", fontWeight: 400 }} onClick={onUploadClick}>
             {t.uploadPdfBtn}
           </button>
         </div>
@@ -71,7 +93,7 @@ export default function Library({ t, documents, onOpenBook, onUploadClick }: Lib
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
             gap: "var(--space-6)",
             maxWidth: 1100,
             margin: "0 auto",
@@ -87,7 +109,7 @@ export default function Library({ t, documents, onOpenBook, onUploadClick }: Lib
               <div
                 className="plate"
                 style={{
-                  aspectRatio: "2/3",
+                  height: 370,
                   width: "100%",
                   display: "flex",
                   alignItems: "center",
