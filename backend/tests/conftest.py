@@ -29,6 +29,15 @@ def isolated_app_storage(tmp_path_factory):
     os.environ["APP_DB_PATH"] = str(tmp_dir / "test.db")
     os.environ["APP_CHROMA_DIR"] = str(tmp_dir / "chroma")
     os.environ["APP_AUDIO_DIR"] = str(tmp_dir / "audio")
+    os.environ["APP_DOCUMENTS_DIR"] = str(tmp_dir / "documents")
+
+    # Copy the real .env (real API key included) into a throwaway file so
+    # settings-mutation tests (PUT /settings/openai-key) never overwrite the
+    # developer's actual .env, while real-API tests still have a working key.
+    real_env_file = Path(__file__).resolve().parents[1] / ".env"
+    tmp_env_file = tmp_dir / ".env"
+    shutil.copy(real_env_file, tmp_env_file)
+    os.environ["APP_ENV_FILE"] = str(tmp_env_file)
 
     from app.db.session import init_db
 

@@ -3,6 +3,8 @@ short-term-window + rolling-summary memory mechanism. Hits the real OpenAI
 APIs (embeddings, chat completions) and the real cross-encoder model.
 """
 
+from pathlib import Path
+
 SHORT_TERM_WINDOW = 8  # keep in sync with app.core.memory.SHORT_TERM_WINDOW
 
 
@@ -36,6 +38,13 @@ def test_chat_returns_grounded_answer_with_citations(client, sample_document_id)
     for source in body["sources"]:
         assert source["start_page"] is not None
 
+    # Text input must still come back with audio -- output is always spoken,
+    # regardless of whether the question arrived as text or voice.
+    assert body["audio_path"].startswith("/audio/")
+    audio_response = client.get(body["audio_path"])
+    assert audio_response.status_code == 200
+    assert len(audio_response.content) > 1000
+
 
 def test_chat_refuses_out_of_scope_question(client, sample_document_id):
     response = client.post("/conversations", json={"document_id": sample_document_id})
@@ -52,6 +61,12 @@ def test_chat_refuses_out_of_scope_question(client, sample_document_id):
     body = response.json()
     assert body["is_refusal"] is True
     assert body["sources"] == []
+
+    # Refusals are still spoken back -- a voice-first app shouldn't go silent
+    # just because it can't answer.
+    assert body["audio_path"].startswith("/audio/")
+    audio_response = client.get(body["audio_path"])
+    assert audio_response.status_code == 200
 
 
 def test_chat_pronoun_followup_resolved_via_condensation(client, sample_document_id):
@@ -154,13 +169,22 @@ def test_update_conversation_persists_current_page_and_tone(client, sample_docum
 def test_delete_conversation_removes_it_and_its_messages(client, sample_document_id):
     response = client.post("/conversations", json={"document_id": sample_document_id})
     conversation_id = response.json()["id"]
-    client.post(
+    response = client.post(
         "/chat",
         json={"conversation_id": conversation_id, "question": "What optimizer was used?"},
     )
+    audio_path = response.json()["audio_path"]
+
+    from app.core.tts import AUDIO_DIR
+
+    audio_file = AUDIO_DIR / Path(audio_path).name
+    assert audio_file.exists()
 
     response = client.delete(f"/conversations/{conversation_id}")
     assert response.status_code == 204
 
     response = client.get(f"/conversations/{conversation_id}/messages")
     assert response.status_code == 404
+
+    # The answer's audio file on disk must be cleaned up too, not just the DB rows.
+    assert not audio_file.exists()

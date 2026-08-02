@@ -1,0 +1,50 @@
+[
+  {
+    "id": "q1_architecture",
+    "question": "What is the main architecture proposed in this paper?",
+    "expect_refusal": false,
+    "keywords": ["transformer"]
+  },
+  {
+    "id": "q2_bleu_en_de",
+    "question": "What BLEU score did the model achieve on the English-to-German translation task?",
+    "expect_refusal": false,
+    "keywords": ["28.4"]
+  },
+  {
+    "id": "q3_bleu_en_fr",
+    "question": "What BLEU score did it get on English-to-French translation?",
+    "expect_refusal": false,
+    "keywords": ["41.0"]
+  },
+  {
+    "id": "q4_encoder_layers",
+    "question": "How many layers does the encoder have in the base model?",
+    "expect_refusal": false,
+    "keywords": ["6"]
+  },
+  {
+    "id": "q5_optimizer",
+    "question": "What optimizer was used to train the model?",
+    "expect_refusal": false,
+    "keywords": ["adam"]
+  },
+  {
+    "id": "q6_multihead_attention",
+    "question": "Why use multi-head attention instead of a single attention function?",
+    "expect_refusal": false,
+    "keywords": ["head"]
+  },
+  {
+    "id": "q7_regularization",
+    "question": "What regularization techniques were used during training?",
+    "expect_refusal": false,
+    "keywords": ["dropout"]
+  },
+  {
+    "id": "q8_out_of_scope",
+    "question": "What is the best recipe for chocolate chip cookies?",
+    "expect_refusal": true,
+    "keywords": []
+  }
+]

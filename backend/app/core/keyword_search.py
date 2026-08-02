@@ -1,4 +1,5 @@
-# BM25 index + search
+# BM25 index + search -- the keyword-matching half of hybrid retrieval.
+# BM25 索引与检索——混合检索中负责关键词匹配的那一半。
 
 import re
 
@@ -11,6 +12,8 @@ _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 def _tokenize(text: str) -> list[str]:
+    """Lowercases and splits text into alphanumeric tokens for BM25.
+    将文本转为小写并切分为字母数字token，供 BM25 使用。"""
     return _TOKEN_RE.findall(text.lower())
 
 
@@ -20,6 +23,12 @@ def bm25_search(document_id: str, query: str, top_k: int = 20) -> list[tuple[str
     be worth caching per document if this ever becomes a hot path.
 
     Returns (chunk_id, score) sorted descending.
+
+    对单个文档的文本块做关键词检索。每次调用都重新构建 BM25 索引——在书籍
+    量级的语料下这是最简单、正确的做法；如果这里成为性能瓶颈，值得考虑
+    按文档缓存索引。
+
+    返回按分数降序排列的 (chunk_id, score) 列表。
     """
     session = SessionLocal()
     try:

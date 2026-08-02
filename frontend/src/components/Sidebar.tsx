@@ -16,7 +16,7 @@ interface SidebarProps {
   onShowLibrary: () => void;
   onShowSettings: () => void;
   onOpenBook: (documentId: string) => void;
-  onDeleteConversation: (documentId: string, conversationId: string) => void;
+  onDeleteConversation: (documentId: string, conversationId: string) => Promise<void>;
 }
 
 const SIDEBAR_WIDTH_OPEN = 288;
@@ -41,8 +41,26 @@ export default function Sidebar({
   onDeleteConversation,
 }: SidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const sessions = documents.filter((d) => d.conversation_id);
   const expanded = pinned || isHovering;
+
+  async function handleDelete(documentId: string, conversationId: string) {
+    if (deletingIds.has(conversationId)) return; // already in flight -- ignore repeat clicks
+    setDeletingIds((prev) => new Set(prev).add(conversationId));
+    try {
+      await onDeleteConversation(documentId, conversationId);
+    } finally {
+      // If the delete succeeded, this item is gone from `documents` on the next render
+      // anyway; if it failed, this clears the spinner/disabled state so the button is
+      // usable again instead of staying stuck.
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(conversationId);
+        return next;
+      });
+    }
+  }
 
   return (
     <div
@@ -99,27 +117,36 @@ export default function Sidebar({
               {t.conversations}
             </div>
             <div className="m-scroll" style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              {sessions.map((doc) => (
-                <div key={doc.id} className={`m-session ${view === "chat" && selectedDocumentId === doc.id ? "active" : ""}`}>
-                  <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onOpenBook(doc.id)}>
-                    <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {doc.title}
-                    </div>
-                    <div style={{ fontSize: 12, opacity: 0.55, marginTop: 2 }}>{sessionMeta(t, doc)}</div>
-                  </div>
-                  <button
-                    type="button"
-                    className="m-session-delete"
-                    aria-label="Delete conversation"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (doc.conversation_id) onDeleteConversation(doc.id, doc.conversation_id);
-                    }}
+              {sessions.map((doc) => {
+                const isDeleting = doc.conversation_id ? deletingIds.has(doc.conversation_id) : false;
+                return (
+                  <div
+                    key={doc.id}
+                    className={`m-session ${view === "chat" && selectedDocumentId === doc.id ? "active" : ""}`}
+                    style={{ opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.15s ease" }}
                   >
-                    <TrashIcon />
-                  </button>
-                </div>
-              ))}
+                    <div style={{ flex: 1, minWidth: 0, cursor: isDeleting ? "default" : "pointer" }} onClick={() => !isDeleting && onOpenBook(doc.id)}>
+                      <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {doc.title}
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.55, marginTop: 2 }}>{sessionMeta(t, doc)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="m-session-delete"
+                      aria-label="Delete conversation"
+                      disabled={isDeleting}
+                      style={{ cursor: isDeleting ? "default" : "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (doc.conversation_id) handleDelete(doc.id, doc.conversation_id);
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

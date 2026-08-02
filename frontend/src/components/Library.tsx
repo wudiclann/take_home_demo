@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import type { DocumentListItem } from "../api/client";
 import type { Strings } from "../i18n";
+import { TrashIcon } from "./icons";
 
 interface LibraryProps {
   t: Strings;
   documents: DocumentListItem[];
   onOpenBook: (documentId: string) => void;
   onUploadClick: () => void;
+  onDeleteDocument: (documentId: string) => void;
 }
 
 // Deterministic accent-tinted placeholder cover (no real cover art available),
@@ -19,7 +21,7 @@ function coverTint(title: string): string {
   return COVER_TINTS[hash % COVER_TINTS.length];
 }
 
-export default function Library({ t, documents, onOpenBook, onUploadClick }: LibraryProps) {
+export default function Library({ t, documents, onOpenBook, onUploadClick, onDeleteDocument }: LibraryProps) {
   const [query, setQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -102,13 +104,14 @@ export default function Library({ t, documents, onOpenBook, onUploadClick }: Lib
           {filtered.map((doc) => (
             <div
               key={doc.id}
-              className="card elev-sm"
+              className="card elev-sm m-book-card"
               style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}
               onClick={() => onOpenBook(doc.id)}
             >
               <div
                 className="plate"
                 style={{
+                  position: "relative",
                   height: 370,
                   width: "100%",
                   display: "flex",
@@ -121,6 +124,19 @@ export default function Library({ t, documents, onOpenBook, onUploadClick }: Lib
                 }}
               >
                 {doc.title.charAt(0).toUpperCase()}
+                <button
+                  type="button"
+                  className="m-book-delete"
+                  aria-label={t.deleteBookAria(doc.title)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(t.confirmDeleteBook(doc.title))) {
+                      onDeleteDocument(doc.id);
+                    }
+                  }}
+                >
+                  <TrashIcon />
+                </button>
               </div>
               <div>
                 <div className="card-title" style={{ fontSize: 19, lineHeight: 1.25 }}>

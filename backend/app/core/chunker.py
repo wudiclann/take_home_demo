@@ -2,6 +2,10 @@
 # target size (splitting oversized paragraphs on sentence boundaries), with a
 # small character overlap carried into the next chunk -- not a fixed-size,
 # no-overlap sliding window.
+#
+# 结构感知分块模块：把一个章节内的段落打包成大小接近目标值的文本块
+# （过长的段落会按句子边界切开），相邻块之间保留少量字符重叠——
+# 而不是简单的、无重叠的固定长度滑动窗口。
 
 from __future__ import annotations
 
@@ -19,12 +23,19 @@ _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 @dataclass
 class Chunk:
+    """One retrieval-ready chunk of text and the page range it spans.
+    一个可用于检索的文本块，以及它跨越的页码范围。"""
+
     text: str
     start_page: int
     end_page: int
 
 
 def _split_long_paragraph(paragraph: Paragraph) -> list[Paragraph]:
+    """Splits a paragraph longer than MAX_PARAGRAPH_CHARS into smaller pieces
+    on sentence boundaries, so one giant paragraph can't dominate a whole chunk.
+    把超过 MAX_PARAGRAPH_CHARS 的段落按句子边界切成更小的片段，
+    避免单个超长段落独占整个文本块。"""
     if len(paragraph.text) <= MAX_PARAGRAPH_CHARS:
         return [paragraph]
 
@@ -43,6 +54,15 @@ def _split_long_paragraph(paragraph: Paragraph) -> list[Paragraph]:
 
 
 def chunk_paragraphs(paragraphs: list[Paragraph]) -> list[Chunk]:
+    """Packs a chapter's paragraphs into chunks around TARGET_CHARS long. When
+    a chunk fills up, the tail of it (OVERLAP_CHARS) is carried over as the
+    start of the next chunk, so a fact split across a chunk boundary is still
+    findable from either side.
+
+    把一个章节的段落打包成长度接近 TARGET_CHARS 的文本块。当一个块被填满时，
+    它末尾的一部分内容（OVERLAP_CHARS 个字符）会被带入下一个块的开头，
+    这样即使某个知识点正好落在块的边界上，从前后两个块都能检索到它。
+    """
     units: list[Paragraph] = []
     for paragraph in paragraphs:
         units.extend(_split_long_paragraph(paragraph))
@@ -52,6 +72,9 @@ def chunk_paragraphs(paragraphs: list[Paragraph]) -> list[Chunk]:
     current_len = 0
 
     def flush_and_start_overlap() -> None:
+        """Closes out the current chunk and seeds the next one with its
+        trailing OVERLAP_CHARS of text.
+        结束当前文本块，并用其末尾 OVERLAP_CHARS 个字符作为下一个块的起始内容。"""
         nonlocal current, current_len
         text = "\n\n".join(p.text for p in current)
         last_page = current[-1].page

@@ -13,6 +13,7 @@ export default defineConfig({
       "/ask": "http://localhost:8000",
       "/transcribe": "http://localhost:8000",
       "/audio": "http://localhost:8000",
+      "/settings": "http://localhost:8000",
     },
   },
 });

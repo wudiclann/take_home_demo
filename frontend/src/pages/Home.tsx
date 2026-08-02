@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   deleteConversation,
+  deleteDocument,
   getOrCreateConversation,
+  getSettings,
   listDocuments,
   type ConversationOut,
   type DocumentListItem,
@@ -23,6 +25,7 @@ export default function Home() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<ConversationOut | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
 
   const t = STRINGS[language];
 
@@ -31,6 +34,7 @@ export default function Home() {
   }
 
   useEffect(() => {
+    getSettings().then((s) => setIsApiKeyConfigured(s.is_openai_key_configured));
     listDocuments().then((docs) => {
       setDocuments(docs);
       const withConversation = docs.find((d) => d.conversation_id);
@@ -68,6 +72,16 @@ export default function Home() {
     refreshDocuments();
   }
 
+  async function handleDeleteDocument(documentId: string) {
+    await deleteDocument(documentId);
+    if (selectedDocumentId === documentId) {
+      setSelectedDocumentId(null);
+      setSelectedConversation(null);
+      setView("library");
+    }
+    refreshDocuments();
+  }
+
   function handleConversationUpdate(patch: Partial<ConversationOut>) {
     setSelectedConversation((prev) => (prev ? { ...prev, ...patch } : prev));
     if (patch.current_page !== undefined && selectedDocumentId) {
@@ -96,8 +110,18 @@ export default function Home() {
       />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, position: "relative" }}>
-        {view === "library" && <Library t={t} documents={documents} onOpenBook={openBook} onUploadClick={() => setShowUpload(true)} />}
-        {view === "settings" && <SettingsView t={t} language={language} onLanguageChange={setLanguage} />}
+        {view === "library" && (
+          <Library
+            t={t}
+            documents={documents}
+            onOpenBook={openBook}
+            onUploadClick={() => setShowUpload(true)}
+            onDeleteDocument={handleDeleteDocument}
+          />
+        )}
+        {view === "settings" && (
+          <SettingsView t={t} language={language} onLanguageChange={setLanguage} onApiKeyChange={setIsApiKeyConfigured} />
+        )}
         {view === "chat" && selectedDocument && selectedConversation && (
           <ChatArea
             t={t}
@@ -106,11 +130,14 @@ export default function Home() {
             totalPages={selectedDocument.total_pages}
             conversation={selectedConversation}
             onConversationUpdate={handleConversationUpdate}
+            isApiKeyConfigured={isApiKeyConfigured}
           />
         )}
       </div>
 
-      {showUpload && <PdfUpload t={t} onClose={() => setShowUpload(false)} onUploaded={handleUploaded} />}
+      {showUpload && (
+        <PdfUpload t={t} onClose={() => setShowUpload(false)} onUploaded={handleUploaded} isApiKeyConfigured={isApiKeyConfigured} />
+      )}
     </div>
   );
 }

@@ -6,9 +6,11 @@ interface MicButtonProps {
   onStart: () => void;
   onStop: (blob: Blob) => void;
   disabled?: boolean;
+  // Runs before mic access is requested; returning false aborts the recording attempt.
+  onBeforeStart?: () => boolean;
 }
 
-export default function MicButton({ isRecording, onStart, onStop, disabled }: MicButtonProps) {
+export default function MicButton({ isRecording, onStart, onStop, disabled, onBeforeStart }: MicButtonProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -17,6 +19,7 @@ export default function MicButton({ isRecording, onStart, onStop, disabled }: Mi
       mediaRecorderRef.current?.stop();
       return;
     }
+    if (onBeforeStart && !onBeforeStart()) return;
 
     let stream: MediaStream;
     try {

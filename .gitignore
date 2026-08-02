@@ -29,6 +29,9 @@ backend/static/*
 frontend/node_modules/
 frontend/dist/
 
+# Launcher script output
+logs/
+
 # OS
 .DS_Store
 

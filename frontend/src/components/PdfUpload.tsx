@@ -2,14 +2,16 @@ import { useRef, useState } from "react";
 import { pollDocumentUntilReady, uploadDocument } from "../api/client";
 import type { Strings } from "../i18n";
 import { UploadIcon } from "./icons";
+import { showToast } from "./Toast";
 
 interface PdfUploadProps {
   t: Strings;
   onClose: () => void;
   onUploaded: (documentId: string) => void;
+  isApiKeyConfigured: boolean;
 }
 
-export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
+export default function PdfUpload({ t, onClose, onUploaded, isApiKeyConfigured }: PdfUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<"idle" | "uploading" | "processing" | "error">("idle");
@@ -28,6 +30,10 @@ export default function PdfUpload({ t, onClose, onUploaded }: PdfUploadProps) {
 
   async function handleUpload() {
     if (!file) return;
+    if (!isApiKeyConfigured) {
+      showToast(t.keyRequiredToast);
+      return;
+    }
     setStatus("uploading");
     setError(null);
     try {

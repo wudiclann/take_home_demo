@@ -17,6 +17,7 @@ import type { Strings } from "../i18n";
 import AudioPlayer from "./AudioPlayer";
 import { ChevronLeftIcon, ChevronRightIcon, SendIcon } from "./icons";
 import MicButton from "./MicButton";
+import { showToast } from "./Toast";
 
 interface ChatAreaProps {
   t: Strings;
@@ -25,6 +26,7 @@ interface ChatAreaProps {
   totalPages: number | null;
   conversation: ConversationOut;
   onConversationUpdate: (patch: Partial<ConversationOut>) => void;
+  isApiKeyConfigured: boolean;
 }
 
 const TONES: AnswerTone[] = ["concise", "conversational", "scholarly"];
@@ -104,7 +106,7 @@ function citationLabel(s: SourceOut): string {
   return s.chapter_title ?? "Source";
 }
 
-export default function ChatArea({ t, documentId, documentTitle, totalPages, conversation, onConversationUpdate }: ChatAreaProps) {
+export default function ChatArea({ t, documentId, documentTitle, totalPages, conversation, onConversationUpdate, isApiKeyConfigured }: ChatAreaProps) {
   const [chapters, setChapters] = useState<ChapterOut[]>([]);
   const [messages, setMessages] = useState<MessageOut[]>([]);
   const [currentPage, setCurrentPage] = useState(conversation.current_page ?? 1);
@@ -112,6 +114,7 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
   const [textInput, setTextInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [autoplayMessageId, setAutoplayMessageId] = useState<string | null>(null);
   const [pdfPaneWidth, setPdfPaneWidth] = useState<number | string>(DEFAULT_PDF_PANE_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [hasManuallyResized, setHasManuallyResized] = useState(false);
@@ -276,17 +279,17 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
     onConversationUpdate({ answer_tone: newTone });
   }
 
-  function appendUserMessage(text: string): string {
+  function appendUserMessage(text: string, audioPath: string | null = null): string {
     const id = `local-${Date.now()}-u`;
     setMessages((prev) => [
       ...prev,
-      { id, role: "user", text, audio_path: null, audio_duration_s: null, top_rerank_score: null, is_refusal: null, created_at: new Date().toISOString(), sources: [] },
+      { id, role: "user", text, audio_path: audioPath, audio_duration_s: null, top_rerank_score: null, is_refusal: null, created_at: new Date().toISOString(), sources: [] },
     ]);
     return id;
   }
 
-  function updateMessageText(id: string, text: string) {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text } : m)));
+  function updateMessage(id: string, patch: Partial<MessageOut>) {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }
 
   function appendAssistantMessage(assistant: { id: string; text: string; sources: SourceOut[]; audio_path?: string | null; is_refusal: boolean; top_rerank_score: number | null }) {
@@ -304,31 +307,24 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
         sources: assistant.sources,
       },
     ]);
+    // Every answer now always includes audio (text or voice input alike) -- mark it as
+    // the one to autoplay. Historical messages loaded via getMessages() never go through
+    // this function, so reopening a conversation never replays old answers.
+    setAutoplayMessageId(assistant.id);
   }
 
   async function handleSendText() {
     const question = textInput.trim();
     if (!question || isBusy) return;
+    if (!isApiKeyConfigured) {
+      showToast(t.keyRequiredToast);
+      return;
+    }
     setTextInput("");
     appendUserMessage(question);
     setIsBusy(true);
     try {
       const response = await sendChatMessage(conversation.id, question);
-      appendAssistantMessage({ id: response.message_id, text: response.answer, sources: response.sources, is_refusal: response.is_refusal, top_rerank_score: response.top_rerank_score });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function handleRecordingStop(blob: Blob) {
-    setIsRecording(false);
-    const placeholderId = appendUserMessage("🎤 …");
-    setIsBusy(true);
-    try {
-      const response = await sendAsk(conversation.id, blob);
-      updateMessageText(placeholderId, response.question);
       appendAssistantMessage({
         id: response.message_id,
         text: response.answer,
@@ -339,7 +335,34 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
       });
     } catch (err) {
       console.error(err);
-      updateMessageText(placeholderId, "(couldn't transcribe that)");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleRecordingStop(blob: Blob) {
+    setIsRecording(false);
+    // Show the recording immediately (a local object URL, no server round-trip needed
+    // for this) instead of a "🎤 …" placeholder -- the transcribed text is never shown
+    // for a voice-originated message, only the audio itself.
+    const localAudioUrl = URL.createObjectURL(blob);
+    const placeholderId = appendUserMessage("", localAudioUrl);
+    setIsBusy(true);
+    try {
+      const response = await sendAsk(conversation.id, blob);
+      updateMessage(placeholderId, { text: response.question, audio_path: response.question_audio_path });
+      URL.revokeObjectURL(localAudioUrl);
+      appendAssistantMessage({
+        id: response.message_id,
+        text: response.answer,
+        sources: response.sources,
+        is_refusal: response.is_refusal,
+        top_rerank_score: response.top_rerank_score,
+        audio_path: response.audio_path,
+      });
+    } catch (err) {
+      console.error(err);
+      // Keep the local recording playable even though transcription/generation failed.
     } finally {
       setIsBusy(false);
     }
@@ -490,31 +513,44 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
                       borderRadius: 6,
                     }}
                   >
-                    <div style={{ textAlign: "left", lineHeight: 1.55 }}>
-                      <Streamdown>{msg.text}</Streamdown>
-                    </div>
-                    {sources.length > 0 && (
-                      <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-                        {sources.map((s) =>
-                          s.start_page != null ? (
-                            <button
-                              key={sourceKey(s)}
-                              type="button"
-                              className="tag tag-outline tag-clickable"
-                              style={{ border: "1px solid var(--color-accent)" }}
-                              onClick={() => goToPage(s.start_page!)}
-                            >
-                              {citationLabel(s)}
-                            </button>
-                          ) : (
-                            <span key={sourceKey(s)} className="tag tag-outline">
-                              {citationLabel(s)}
-                            </span>
-                          ),
+                    {isUser && msg.audio_path ? (
+                      // Voice-originated user message: only the recording is shown, never
+                      // the transcribed text.
+                      <AudioPlayer src={msg.audio_path} />
+                    ) : (
+                      <>
+                        <div style={{ textAlign: "left", lineHeight: 1.55 }}>
+                          <Streamdown>{msg.text}</Streamdown>
+                        </div>
+                        {sources.length > 0 && (
+                          <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                            {sources.map((s) =>
+                              s.start_page != null ? (
+                                <button
+                                  key={sourceKey(s)}
+                                  type="button"
+                                  className="tag tag-outline tag-clickable"
+                                  style={{ border: "1px solid var(--color-accent)" }}
+                                  onClick={() => goToPage(s.start_page!)}
+                                >
+                                  {citationLabel(s)}
+                                </button>
+                              ) : (
+                                <span key={sourceKey(s)} className="tag tag-outline">
+                                  {citationLabel(s)}
+                                </span>
+                              ),
+                            )}
+                          </div>
                         )}
-                      </div>
+                        {msg.audio_path && (
+                          <AudioPlayer
+                            src={msg.audio_path}
+                            autoPlay={msg.role === "assistant" && msg.id === autoplayMessageId}
+                          />
+                        )}
+                      </>
                     )}
-                    {msg.role === "assistant" && msg.audio_path && <AudioPlayer src={msg.audio_path} />}
                   </div>
                 </div>
               );
@@ -550,7 +586,19 @@ export default function ChatArea({ t, documentId, documentTitle, totalPages, con
                 />
               )}
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-1)" }}>
-                <MicButton isRecording={isRecording} onStart={() => setIsRecording(true)} onStop={handleRecordingStop} disabled={isBusy && !isRecording} />
+                <MicButton
+                  isRecording={isRecording}
+                  onStart={() => setIsRecording(true)}
+                  onStop={handleRecordingStop}
+                  disabled={isBusy && !isRecording}
+                  onBeforeStart={() => {
+                    if (!isApiKeyConfigured) {
+                      showToast(t.keyRequiredToast);
+                      return false;
+                    }
+                    return true;
+                  }}
+                />
                 <button type="button" className="btn btn-ghost btn-icon" style={{ width: 32, height: 32, color: "var(--color-accent)" }} aria-label="Send" onClick={handleSendText} disabled={isBusy || !textInput.trim()}>
                   <SendIcon />
                 </button>

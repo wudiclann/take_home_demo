@@ -3,6 +3,7 @@ import { PauseIcon, PlayIcon } from "./icons";
 
 interface AudioPlayerProps {
   src: string;
+  autoPlay?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -12,7 +13,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function AudioPlayer({ src }: AudioPlayerProps) {
+export default function AudioPlayer({ src, autoPlay }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,7 +25,21 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
     setDuration(0);
   }, [src]);
 
-  const playedPct = duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
+  // Each AudioPlayer instance is mounted once for a given message (new array
+  // entry -> new key), so a mount-only autoplay is exactly "play once, when
+  // this specific answer first appears" -- never replays on later re-renders.
+  useEffect(() => {
+    if (autoPlay) {
+      audioRef.current?.play().catch(() => {
+        // Autoplay-with-sound can still be blocked by the browser in some
+        // cases (e.g. no prior user gesture on this origin) -- fail silently
+        // and leave the manual play button as the fallback.
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const playedPct = duration > 0 && Number.isFinite(duration) ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
 
   function togglePlay() {
     const audio = audioRef.current;
@@ -38,22 +53,41 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
 
   function seek(e: React.MouseEvent<HTMLDivElement>) {
     const audio = audioRef.current;
-    if (!audio || duration === 0) return;
+    if (!audio || duration === 0 || !Number.isFinite(duration)) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     audio.currentTime = ratio * duration;
   }
 
+  function handleLoadedMetadata(e: React.SyntheticEvent<HTMLAudioElement>) {
+    const audio = e.currentTarget;
+    if (Number.isFinite(audio.duration)) {
+      setDuration(audio.duration);
+      return;
+    }
+    // MediaRecorder-produced webm/opus blobs (voice recordings) report duration as
+    // Infinity here -- webm is a streaming container, so the real duration isn't
+    // known until the browser scans to the end of the data. Seeking far past the
+    // end forces that scan; the resulting timeupdate carries the real duration.
+    audio.currentTime = 1e101;
+    const onTimeUpdate = () => {
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      setDuration(audio.duration);
+      audio.currentTime = 0;
+    };
+    audio.addEventListener("timeupdate", onTimeUpdate);
+  }
+
   return (
-    <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+    <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 220 }}>
       <audio
         ref={audioRef}
         src={src}
-        preload="metadata"
+        preload={autoPlay ? "auto" : "metadata"}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
       />
       <button

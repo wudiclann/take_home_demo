@@ -1,4 +1,5 @@
 # RRF merge of BM25 + vector results, then cross-encoder rerank to the final top-k
+# 用倒数排名融合（RRF）合并 BM25 与向量检索结果，再用交叉编码器重排序，得到最终 top-k
 
 from dataclasses import dataclass
 
@@ -14,6 +15,10 @@ RRF_K = 60
 
 @dataclass
 class RetrievedChunk:
+    """One retrieved chunk plus both of its scores, for citations and the
+    refusal-gate decision downstream.
+    一个被检索到的文本块及其两项分数，供后续生成引用和判断是否拒答使用。"""
+
     chunk_id: str
     text: str
     chapter_id: str | None
@@ -25,7 +30,11 @@ class RetrievedChunk:
 
 def reciprocal_rank_fusion(*ranked_id_lists: list[str], k: int = RRF_K) -> list[tuple[str, float]]:
     """Each argument is a list of chunk ids in rank order (best first),
-    joined by shared chunk id. Returns (chunk_id, rrf_score) sorted descending."""
+    joined by shared chunk id. Returns (chunk_id, rrf_score) sorted descending.
+
+    每个参数都是一个按排名排序（最相关的在前）的 chunk id 列表，
+    按相同的 chunk id 合并。返回按 rrf_score 降序排列的 (chunk_id, rrf_score)。
+    """
     scores: dict[str, float] = {}
     for ranked_ids in ranked_id_lists:
         for rank, chunk_id in enumerate(ranked_ids, start=1):
@@ -35,7 +44,12 @@ def reciprocal_rank_fusion(*ranked_id_lists: list[str], k: int = RRF_K) -> list[
 
 def hybrid_search(document_id: str, query: str, top_k: int = 20) -> list[tuple[str, float]]:
     """BM25 keyword search + Chroma vector search, scoped to one document,
-    merged by Reciprocal Rank Fusion. Returns (chunk_id, rrf_score) sorted descending."""
+    merged by Reciprocal Rank Fusion. Returns (chunk_id, rrf_score) sorted descending.
+
+    对单个文档同时做 BM25 关键词检索和 Chroma 向量检索，
+    再用倒数排名融合（RRF）合并两路结果。
+    返回按 rrf_score 降序排列的 (chunk_id, rrf_score)。
+    """
     [embedding] = embed_texts([query])
 
     bm25_results = bm25_search(document_id, query, top_k=top_k)
@@ -49,7 +63,8 @@ def hybrid_search(document_id: str, query: str, top_k: int = 20) -> list[tuple[s
 
 
 def retrieve(document_id: str, query: str, hybrid_k: int = 20, final_k: int = 3) -> list[RetrievedChunk]:
-    """Full retrieval pipeline: hybrid search -> cross-encoder rerank -> top final_k."""
+    """Full retrieval pipeline: hybrid search -> cross-encoder rerank -> top final_k.
+    完整检索流水线：混合检索 -> 交叉编码器重排序 -> 取最终的 top final_k 个结果。"""
     hybrid_results = hybrid_search(document_id, query, top_k=hybrid_k)
     if not hybrid_results:
         return []

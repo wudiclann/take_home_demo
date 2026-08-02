@@ -101,8 +101,26 @@ keep them in mind for every decision, not just the initial architecture:
 - **Language**: English-only for v1 — PDFs, ASR, TTS, and retrieval all assume English text. A UI
   language toggle (English/中文) exists but is **label-only i18n** (menus/buttons); it does not
   change ASR/TTS/RAG language capability.
-- **API keys**: server-side `.env` OpenAI key. No client-supplied/BYO key flow, despite an earlier
-  mockup implying otherwise.
+- **API keys**: server-side `.env` OpenAI key, user-editable from the Settings page (`GET/PUT
+  /settings`, `PUT /settings/openai-key`) — this **reverses** an earlier locked decision that ruled
+  out a client-supplied/BYO key flow. The key is validated by format only (`sk-` + 20+ chars, not a
+  live call to OpenAI), written into `backend/.env`, and the key display is masked
+  (`sk-************`) after saving — the raw value is never sent back to the frontend once saved.
+  Saving hot-swaps the key into every OpenAI client (`get_settings.cache_clear()` +
+  `reset_client()` in `asr.py`/`embeddings.py`/`tts.py`) so it takes effect without a server
+  restart. Every endpoint that calls OpenAI (`/documents/upload`, `/chat`, `/ask`, `/transcribe`)
+  is gated behind `is_configured()` and 400s with a clear message if the key is missing/invalid;
+  the frontend mirrors this client-side (toast + no request) before upload/send/mic-start.
+- **TTS voice/speed**: also global app settings (not per-conversation, unlike `answer_tone`),
+  editable from the same Settings page (`PUT /settings/voice`) and persisted the same way — written
+  into `backend/.env` (`TTS_VOICE`/`TTS_SPEED`) via a generalized `config.update_env_var()` (shared
+  with the API key save path), auto-applied via `get_settings.cache_clear()`. No client reset
+  needed here (unlike the API key) since voice/speed are passed per-call to
+  `audio.speech.create()`, not baked into the cached `OpenAI` client. Voice defaults to `alloy`
+  (any of the 11 voices `gpt-4o-mini-tts` accepts); speed defaults to `1.25` (a deliberate bump
+  over OpenAI's own `1.0` default, chosen for a snappier voice-conversation feel), adjustable
+  0.5-2.0 via the app (OpenAI's own API allows 0.25-4.0, but the app narrows this since anything
+  further out is impractical for spoken conversation).
 - **current_page** (reading position) is **display-only** — it drives the UI header, but does
   **not** gate retrieval. Retrieval always searches the whole book (no spoiler-avoidance filtering).
 - **Audio persistence**: each assistant answer's synthesized TTS audio is saved to disk and
@@ -146,7 +164,7 @@ keep them in mind for every decision, not just the initial architecture:
 `POST /chat` (`{conversation_id, question}` → answer + citations) is the **text-only** path — plain
 text in/out, messages saved without `audio_path`. `POST /ask` (`conversation_id` + audio file,
 multipart) is the **voice** path covering steps 1-8 end-to-end: audio in → `POST /transcribe`'s
-Whisper call → steps 3-8 (memory, condensation, hybrid retrieval, rerank, refusal gate, answer
+Whisper call → steps 3-8 (memory, query analysis, hybrid retrieval, rerank, refusal gate, answer
 generation) → `core/tts.synthesize_speech()` → saved `.mp3` → `{question, answer, is_refusal,
 sources, audio_path}`, with the assistant message's `audio_path` persisted. `POST /transcribe`
 (audio in, text out) also still exists standalone, used internally by `/ask` and directly testable
@@ -157,17 +175,28 @@ synthesizes the full audio, then returns both together; no progressive/streamed 
 1. Browser records audio (MediaRecorder) → uploads to FastAPI.
 2. FastAPI calls Whisper API → transcribed text.
 3. Backend pulls conversation memory for this `conversation_id` (see Memory below).
-4. **Query condensation**: question + memory → LLM → standalone, context-resolved search query.
-   Skipped on a conversation's first turn (no history to resolve against — free latency win).
+4. **Query analysis** (`core/rag.py: analyze_query()`): a single memory-aware LLM call that both
+   (a) classifies the message as small talk/greeting vs. a real question about the book, and
+   (b) if it's a real question, condenses it into a standalone, context-resolved search query.
+   Classification and condensation are merged into one call specifically so the classification
+   has conversation context to work with — a bare follow-up like "why not?" only reads as a real
+   continuation (not chit-chat) given the prior turn; classifying it from the raw text alone
+   misreads it as small talk. Small talk skips retrieval entirely (a separate, lighter LLM call
+   just replies naturally, no citations attached).
 5. **Hybrid retrieval** on the condensed query, scoped to this document only:
    - BM25 keyword search over this document's chunks.
    - Vector similarity search in ChromaDB (same document scope).
    - Merge both ranked lists with RRF (joined by shared chunk id).
 6. **Rerank** merged top-k with the cross-encoder → top 3–5 chunks.
-7. **Refusal gate**: if the top rerank score is below a set threshold, skip generation and return
-   a canned clarifying/refusal response (hard deterministic threshold, not left to LLM judgment —
-   chosen for a reliable, testable refusal case). Threshold is currently `-8.0`, a provisional value
-   from one small eval run (an out-of-scope question scored -10.75 vs. -6.23..9.44 for genuinely
+7. **Refusal gate**: if the top rerank score is below a set threshold, skip retrieval-grounded
+   generation and instead call `generate_refusal()` (`core/rag.py`) — an LLM call, honoring
+   `answer_tone`, that explains naturally that the question isn't covered by the book and invites
+   a rephrase, explicitly instructed not to answer from outside/general knowledge. The *decision*
+   to refuse is still a hard deterministic threshold on the rerank score, not left to LLM judgment
+   (chosen for a reliable, testable refusal case) — only the wording of the refusal itself is
+   LLM-generated. If that LLM call errors, a fixed `REFUSAL_FALLBACK_MESSAGE` is used instead, so a
+   refusal never turns into a hard error. Threshold is currently `-8.0`, a provisional value from
+   one small eval run (an out-of-scope question scored -10.75 vs. -6.23..9.44 for genuinely
    answerable ones) — revisit as more real queries are observed.
 8. Otherwise: original question + retrieved chunks + conversation memory + `answer_tone` → LLM
    (Chat Completions, streamed) → grounded answer.
@@ -195,7 +224,9 @@ unnecessary complexity at single-document, single-session scale:
   summarizes the newly-fallen-out messages instead of re-summarizing the whole history every turn.
   Message rows themselves are never deleted — the full transcript still needs to render in the UI.
 
-Both layers feed **two** places: query condensation (step 4 above) and answer generation (step 8).
+Both layers feed **three** places: query analysis (step 4 above, both classification and
+condensation), the refusal gate's wording (`generate_refusal()`, so a "why not?" follow-up to a
+refusal is itself grounded in what was just discussed), and answer generation (step 8).
 
 ## Database schema
 
@@ -284,6 +315,9 @@ Design notes:
 
 ```
 project-root/
+├── start.sh                          # launcher (macOS/Linux): venv, deps, .env, runs both servers
+├── start.bat                         # launcher (Windows): same, opens backend/frontend in their own windows
+├── Start Demo.command                # double-clickable macOS wrapper around start.sh (no terminal typing)
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                  # FastAPI app entrypoint, mounts routes + static frontend
@@ -300,7 +334,7 @@ project-root/
 │   │   │   ├── keyword_search.py    # BM25 index + search
 │   │   │   ├── retrieval.py         # RRF merge of BM25 + vector results
 │   │   │   ├── reranker.py          # cross-encoder reranking
-│   │   │   ├── rag.py               # orchestrates memory -> query condensation -> retrieval -> LLM call
+│   │   │   ├── rag.py               # orchestrates memory -> query analysis -> retrieval -> LLM call
 │   │   │   ├── memory.py            # short-term window + rolling summary helper
 │   │   │   ├── asr.py               # Whisper API client
 │   │   │   └── tts.py               # OpenAI TTS API client
@@ -370,9 +404,11 @@ Key structural/visual points to preserve:
   prev/next page nav); right side is the chat thread. Assistant messages show a citation tag
   (e.g. "Section 3.2.2, p. 4") and a scrubbable audio player (play/pause, progress bar, duration).
 - Upload dialog: drag-and-drop PDF, "PDF only · up to 200 pages" hint.
-- Settings view: language toggle only (English/中文, label-only per the scope decision above) —
-  the mockup's API-key field is **not** part of the actual implementation (server-side `.env` key
-  instead, see Scope decisions).
+- Settings view, top to bottom: OpenAI API key card (matching the mockup's position at the top) —
+  unlike the mockup's copy (which claims the key is "stored only on this device"), the real
+  description text says it's stored server-side in `.env`, see Scope decisions above — then an
+  "Answer voice" card (voice dropdown + speaking-speed segmented control, not in the original
+  mockup), then the language toggle (English/中文, label-only per the scope decision above).
 
 ## Working agreement
 

@@ -55,11 +55,21 @@ export interface ChatResponse {
   is_refusal: boolean;
   top_rerank_score: number | null;
   sources: SourceOut[];
+  audio_path: string;
 }
 
 export interface AskResponse extends ChatResponse {
   question: string;
+  question_audio_path: string;
   audio_path: string;
+}
+
+export interface SettingsOut {
+  is_openai_key_configured: boolean;
+  openai_api_key_masked: string | null;
+  tts_voice: string;
+  tts_speed: number;
+  available_voices: string[];
 }
 
 export interface MessageOut {
@@ -92,6 +102,30 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export function getSettings(): Promise<SettingsOut> {
+  return request("/settings");
+}
+
+export function saveOpenAiKey(apiKey: string): Promise<SettingsOut> {
+  return request("/settings/openai-key", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
+
+export function clearOpenAiKey(): Promise<SettingsOut> {
+  return request("/settings/openai-key", { method: "DELETE" });
+}
+
+export function saveVoiceSettings(voice: string, speed: number): Promise<SettingsOut> {
+  return request("/settings/voice", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ voice, speed }),
+  });
+}
+
 export function listDocuments(): Promise<DocumentListItem[]> {
   return request("/documents");
 }
@@ -104,6 +138,10 @@ export function uploadDocument(file: File): Promise<DocumentUploadResponse> {
 
 export function getDocument(id: string): Promise<DocumentStatusResponse> {
   return request(`/documents/${id}`);
+}
+
+export function deleteDocument(id: string): Promise<void> {
+  return request(`/documents/${id}`, { method: "DELETE" });
 }
 
 export function getChapters(id: string): Promise<ChapterOut[]> {
