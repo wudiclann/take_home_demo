@@ -8,7 +8,7 @@ interface LibraryProps {
   documents: DocumentListItem[];
   onOpenBook: (documentId: string) => void;
   onUploadClick: () => void;
-  onDeleteDocument: (documentId: string) => void;
+  onDeleteDocument: (documentId: string) => Promise<void>;
 }
 
 // Deterministic accent-tinted placeholder cover (no real cover art available),
@@ -24,6 +24,7 @@ function coverTint(title: string): string {
 export default function Library({ t, documents, onOpenBook, onUploadClick, onDeleteDocument }: LibraryProps) {
   const [query, setQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,6 +33,22 @@ export default function Library({ t, documents, onOpenBook, onUploadClick, onDel
       (d) => d.title.toLowerCase().includes(q) || (d.author ?? "").toLowerCase().includes(q),
     );
   }, [documents, query]);
+
+  async function handleDelete(documentId: string) {
+    if (deletingIds.has(documentId)) return; // already in flight -- ignore repeat clicks
+    setDeletingIds((prev) => new Set(prev).add(documentId));
+    try {
+      await onDeleteDocument(documentId);
+    } finally {
+      // If delete succeeded, this card is gone from `documents` on next render anyway;
+      // if it failed, this clears the disabled state so the button is usable again.
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(documentId);
+        return next;
+      });
+    }
+  }
 
   return (
     <div className="m-scroll" style={{ flex: 1, overflow: "auto", padding: "var(--space-8) var(--space-6)" }}>
@@ -101,61 +118,66 @@ export default function Library({ t, documents, onOpenBook, onUploadClick, onDel
             margin: "0 auto",
           }}
         >
-          {filtered.map((doc) => (
-            <div
-              key={doc.id}
-              className="card elev-sm m-book-card"
-              style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}
-              onClick={() => onOpenBook(doc.id)}
-            >
+          {filtered.map((doc) => {
+            const isDeleting = deletingIds.has(doc.id);
+            return (
               <div
-                className="plate"
-                style={{
-                  position: "relative",
-                  height: 370,
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: coverTint(doc.title),
-                  color: "#F1E7DE",
-                  fontFamily: "var(--font-heading)",
-                  fontSize: 48,
-                }}
+                key={doc.id}
+                className="card elev-sm m-book-card"
+                style={{ cursor: isDeleting ? "default" : "pointer", display: "flex", flexDirection: "column", gap: "var(--space-3)", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.15s ease" }}
+                onClick={() => !isDeleting && onOpenBook(doc.id)}
               >
-                {doc.title.charAt(0).toUpperCase()}
-                <button
-                  type="button"
-                  className="m-book-delete"
-                  aria-label={t.deleteBookAria(doc.title)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm(t.confirmDeleteBook(doc.title))) {
-                      onDeleteDocument(doc.id);
-                    }
+                <div
+                  className="plate"
+                  style={{
+                    position: "relative",
+                    height: 370,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: coverTint(doc.title),
+                    color: "#F1E7DE",
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 48,
                   }}
                 >
-                  <TrashIcon />
-                </button>
-              </div>
-              <div>
-                <div className="card-title" style={{ fontSize: 19, lineHeight: 1.25 }}>
-                  {doc.title}
+                  {doc.title.charAt(0).toUpperCase()}
+                  <button
+                    type="button"
+                    className="m-book-delete"
+                    aria-label={t.deleteBookAria(doc.title)}
+                    disabled={isDeleting}
+                    style={{ cursor: isDeleting ? "default" : "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(t.confirmDeleteBook(doc.title))) {
+                        handleDelete(doc.id);
+                      }
+                    }}
+                  >
+                    <TrashIcon />
+                  </button>
                 </div>
-                {doc.author && <div style={{ opacity: 0.6, fontSize: 14, marginTop: 2 }}>{doc.author}</div>}
+                <div>
+                  <div className="card-title" style={{ fontSize: 19, lineHeight: 1.25 }}>
+                    {doc.title}
+                  </div>
+                  {doc.author && <div style={{ opacity: 0.6, fontSize: 14, marginTop: 2 }}>{doc.author}</div>}
+                </div>
+                <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                  {doc.total_pages && <span className="tag tag-neutral">{t.pagesLabel(doc.total_pages)}</span>}
+                  <span className="tag tag-outline">
+                    {doc.status !== "ready"
+                      ? doc.status
+                      : doc.current_page
+                        ? t.pageOf(doc.current_page, doc.total_pages ?? doc.current_page)
+                        : t.notStarted}
+                  </span>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-                {doc.total_pages && <span className="tag tag-neutral">{t.pagesLabel(doc.total_pages)}</span>}
-                <span className="tag tag-outline">
-                  {doc.status !== "ready"
-                    ? doc.status
-                    : doc.current_page
-                      ? t.pageOf(doc.current_page, doc.total_pages ?? doc.current_page)
-                      : t.notStarted}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

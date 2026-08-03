@@ -154,16 +154,23 @@ def get_document(document_id: str):
 
 
 @router.delete("/{document_id}", status_code=204)
-def delete_document(document_id: str):
+def delete_document(document_id: str, background_tasks: BackgroundTasks):
     """Deletes a document and everything that depends on it: the SQLite
     cascade removes chapters/chunks/conversations/messages/message_sources,
     and this handler additionally cleans up the files that live outside the
     database -- the original PDF, every message's audio file, and the
-    document's vectors in the vector store.
+    document's vectors in the vector store. That cleanup runs as background
+    tasks (not synchronously before responding), since for a large PDF (many
+    chunks -> many vectors to remove) or a long conversation history (many
+    audio files), doing it inline made deletion noticeably slow, scaling with
+    document/conversation size.
 
     删除一个文档及其所有关联数据：SQLite 的级联删除会自动清除章节、
     文本块、对话、消息和消息来源；这个接口还会额外清理数据库之外的文件——
-    原始 PDF、每条消息的音频文件，以及向量库中该文档的向量数据。
+    原始 PDF、每条消息的音频文件，以及向量库中该文档的向量数据。这些清理
+    工作作为后台任务执行（而不是在返回响应前同步执行）——因为对于较大的
+    PDF（分块多，需要删除的向量也多）或较长的对话历史（音频文件多），
+    同步执行会导致删除操作明显变慢，且耗时随文档/对话规模增长。
     """
     session = SessionLocal()
     try:
@@ -188,10 +195,10 @@ def delete_document(document_id: str):
         session.close()
 
     for audio_path in audio_paths:
-        delete_audio_file(audio_path)
+        background_tasks.add_task(delete_audio_file, audio_path)
     if file_path:
-        Path(file_path).unlink(missing_ok=True)
-    delete_by_document(document_id)
+        background_tasks.add_task(lambda p=file_path: Path(p).unlink(missing_ok=True))
+    background_tasks.add_task(delete_by_document, document_id)
 
 
 @router.get("/{document_id}/chapters", response_model=list[ChapterOut])

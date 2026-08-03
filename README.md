@@ -139,6 +139,19 @@ uvicorn app.main:app --reload --port 8000
 
 Leave this running. The API is now live at `http://localhost:8000`.
 
+> **`pip install` slow?** The backend pulls in a few ML libraries (torch, sentence-transformers)
+> for the local reranker, which can take a while on `pip`. [`uv`](https://docs.astral.sh/uv/) is
+> a drop-in, much faster alternative — install it once (`pip install uv`), then swap the venv
+> creation and install lines above for:
+>
+> ```bash
+> uv venv venv
+> source venv/bin/activate         # Windows: venv\Scripts\activate
+> uv pip install -r requirements.txt
+> ```
+>
+> Everything else (`.env` copy, `uvicorn` command) stays the same either way.
+
 ### 2. Frontend
 
 In a **second** terminal, from the project root:
@@ -182,14 +195,36 @@ pytest -q
 Takes a couple of minutes (real API calls). A single file can be run on its own, e.g.
 `pytest tests/test_chat.py -q`.
 
-### 2. `scripts/eval_retrieval.py` — retrieval quality in isolation
+### 2. Upload the sample book (needed for evals #2 and #3 below)
+
+Both retrieval-eval scripts are written against one specific sample PDF, already included in
+the repo — no separate download needed:
+
+```
+backend/tests/fixtures/attention_is_all_you_need.pdf
+```
+
+With the backend and frontend both running (Method 1 or Method 2 above):
+
+1. Open the app in your browser.
+2. In the **Library** view, click **Upload PDF**.
+3. Browse to and select `backend/tests/fixtures/attention_is_all_you_need.pdf`.
+4. Wait until its status shows **ready** (a short "processing" indicator appears first — this
+   is the parse/chunk/embed pipeline running).
+
+Both scripts below auto-match this book by title, so you don't need to pass its ID manually
+unless the title-matching fails (the upload flow title-cases the filename, e.g.
+`attention_is_all_you_need.pdf` → `Attention Is All You Need` — if that doesn't match what's in
+`eval/queries.json`/`scripts/qa_benchmark.json`, grab the document's ID from the Library page
+and pass `--document-id <id>` explicitly).
+
+### 3. `scripts/eval_retrieval.py` — retrieval quality in isolation
 
 Runs a fixed set of queries (`backend/eval/queries.json`) through vector-only search and the
 full hybrid pipeline (BM25 + vector RRF → cross-encoder rerank) side by side, judges each with
 an LLM, and reports a hit-rate comparison. This is what actually demonstrates the retrieval
 strategy is better than naive search — the brief specifically calls out retrieval quality as
-the part most likely to be scrutinized. Needs the sample book already uploaded and ready (use
-the app, or `--document-id` to point at a specific one).
+the part most likely to be scrutinized.
 
 ```bash
 cd backend
@@ -197,7 +232,7 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 python scripts/eval_retrieval.py [--document-id ID] [--out eval/results.json]
 ```
 
-### 3. `scripts/run_qa_benchmark.py` — does the full answer pipeline actually work
+### 4. `scripts/run_qa_benchmark.py` — does the full answer pipeline actually work
 
 The other two check components in isolation; this one hits `/chat` end-to-end with a fixed set
 of real questions about the sample book (`backend/scripts/qa_benchmark.json`) and checks each
@@ -214,14 +249,16 @@ python scripts/run_qa_benchmark.py [--document-id ID] [--cases scripts/qa_benchm
 ```
 
 Uses `fastapi.testclient.TestClient` against the app in-process (like the pytest suite), but
-against your **real** dev database — so it needs the sample book (`attention_is_all_you_need`)
-already ingested, either via the app's upload flow or via `pytest tests/test_documents_ingestion.py`.
+against your **real** dev database — so it needs the sample book uploaded first (step 2 above),
+not just present in `tests/fixtures/`.
 
 ## Troubleshooting
 
 - **"Port already in use"**: another process is already bound to 8000 or 5173. The launcher
   script handles this automatically; if running manually, stop whatever's using that port or
   pass a different port to `uvicorn`/`vite`.
+- **`pip install` taking a long time**: switch to `uv` for the backend install — see the note
+  under [Method 2 → Backend](#1-backend) above. Much faster for the same dependencies.
 - **First backend request is slow**: the cross-encoder reranker model downloads from Hugging
   Face on first startup. This only happens once — it's cached afterward.
 - **"Set up your OpenAI API key in Settings first"**: expected until you've saved a key on the
