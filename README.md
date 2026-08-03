@@ -265,3 +265,21 @@ not just present in `tests/fixtures/`.
   Settings page — see above.
 - **Uploads/answers fail with an OpenAI error**: double check the key on the Settings page is
   correct and has available quota; save it again to retry without restarting the server.
+
+## Viewing the AI-assisted development process
+
+`claude_session_export.zip` (project root) contains raw Claude Code session data — JSON/JSONL
+and log files capturing the actual development history (prompts, tool calls, and responses) —
+rather than a polished, prose transcript. It isn't meant to be re-imported into Claude Code or
+claude.ai; it's raw evidence of the process, not something to replay.
+
+To read it:
+
+1. Unzip `claude_session_export.zip`.
+2. The `.json`/`.jsonl` files hold the session events; a JSON-aware editor (e.g. VS Code) or a
+   pretty-printer (`python -m json.tool some_file.json`, or `jq .` if installed) makes these far
+   easier to follow than a plain text editor, since they're structured data, not prose.
+3. The `.log` files contain [terminal/tool output captured alongside the sessions].
+
+This is raw material rather than a curated writeup — worth skimming for specific moments (a
+design decision, a correction, a rejected suggestion) rather than reading start to end.
